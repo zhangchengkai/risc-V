@@ -454,7 +454,7 @@ private:
     unsigned int HASH(unsigned int pc) { return ((pc >> 12) ^ (pc >> 2)) & 0xfff; }
 
 public:
-	Simulator():pc(0),nxt_pc(0),mem(new uint[5000000]){
+	Simulator():pc(0),nxt_pc(0),mem(new uint[500000]){
         new_issue_to_ex_flag = issue_to_ex_flag = commit_flag = commit_to_SLB = reserve_flag = reserve_isStore = reserve_isJump = fetch_flag = false;
         
         memset(mem, 0, sizeof(mem));
@@ -808,7 +808,7 @@ public:
 };
 
 int main(){
-//	freopen("array_test1.data","r",stdin);
+//	freopen("pi.data","r",stdin);
     std::ios::sync_with_stdio(false);
     Simulator ans;
     ans.scan();
