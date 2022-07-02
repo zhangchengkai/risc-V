@@ -484,7 +484,7 @@ public:
     	int tt=0;
         while (true) {
         	tt++;
-        	if(tt>100000){
+        	if(tt>10000000){
         		printf("137");
         		break;
         	}
