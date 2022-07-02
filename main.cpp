@@ -292,6 +292,9 @@ public:
     	uint V1,V2;
     	command*p;
     	RS_node():busy(0),p(nullptr){}
+    	~RS_node(){
+    		delete p;
+    	}
     	void set(const bool&_busy,const int&_id,const int&_Q1,const int&_Q2,const uint&_V1,const uint&_V2,command*_p){
     		busy=_busy,id=_id,Q1=_Q1,Q2=_Q2,V1=_V1,V2=_V2,p=_p;
     	}
