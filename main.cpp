@@ -293,7 +293,7 @@ public:
     	command*p;
     	RS_node():busy(0),p(nullptr){}
     	~RS_node(){
-    		delete p;
+//    		delete p;
     	}
     	void set(const bool&_busy,const int&_id,const int&_Q1,const int&_Q2,const uint&_V1,const uint&_V2,command*_p){
     		busy=_busy,id=_id,Q1=_Q1,Q2=_Q2,V1=_V1,V2=_V2,p=_p;
@@ -480,15 +480,22 @@ public:
 		}
 		pc=0;
 	}
-	
     void run() {
+    	int tt=0;
         while (true) {
+        	tt++;
+        	if(tt>100000){
+        		printf("137");
+        		break;
+        	}
+//        	if(tt>100000){}
 //        	for(int i=0;i<32;i++) printf("%d ",prereg[i]);
 //        	printf("   pc == %d    nxtpc == %d\n",pc,nxt_pc); 
 //			puts(""); 
             run_rob();
             if (carrier._code == 0x0ff00513) {
                 std::cout << std::dec << ((unsigned int) prereg[10] & 255u) << std::endl;
+//                printf("%d\n",tt);
                 break;
             }
 //            puts("SLB");
