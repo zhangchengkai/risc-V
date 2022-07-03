@@ -1,7 +1,7 @@
 #include<bits/stdc++.h>
 using namespace std;
 typedef unsigned int uint;
-const int lim=1E7;
+const int lim=5E7;
 class Simulator{
 public:
 	void error(){printf("%d\n",(1<<7)+9);}
