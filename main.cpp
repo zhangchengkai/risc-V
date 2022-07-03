@@ -1,11 +1,11 @@
 #include<bits/stdc++.h>
 using namespace std;
 typedef unsigned int uint;
-
+const int lim=1E7;
 class Simulator{
 public:
+	void error(){printf("%d\n",(1<<7)+9);}
 	uint sep(uint x,int l,int r){return (x<<(31-r))>>(31-r+l);}
-	
 	uint ext(uint res,int pos){
 		if((res>>pos)&1) res|=(-1u)<<pos;
 		return res;
@@ -18,15 +18,14 @@ public:
 		uint _code,imm,npc;
 	public:
 		Type type;
-	uint sep(uint x,int l,int r){return (x<<(31-r))>>(31-r+l);}
-	
-	uint ext(uint res,int pos){
-		if((res>>pos)&1) res|=(-1u)<<pos;
-		return res;
-	}
+		uint sep(uint x,int l,int r){return (x<<(31-r))>>(31-r+l);}
+		
+		uint ext(uint res,int pos){
+			if((res>>pos)&1) res|=(-1u)<<pos;
+			return res;
+		}
 		uint get_npc(){return npc;}
 		void set(uint code,uint _imm,uint _npc,Type _type){
-//			printf("set imm here is %u    %d\n",_imm,_type==U);
 			_code=code;
 			npc=_npc; 
 			imm=_imm;
@@ -34,7 +33,6 @@ public:
 		}
 		void process(uint&rd,uint rs1,uint rs2){
 			uint fea0=sep(_code,0,6),fea1=sep(_code,12,14),fea2=sep(_code,30,30);
-//			printf("process here %u\n",imm);
 			if(type==R){
 				switch(fea1){
 					case 0://ADD SUB
@@ -65,7 +63,6 @@ public:
 			}else if(type==U){
 				switch(fea0){
 					case 55://LUI
-//							puts("LUI OK");
 						    rd=imm;
 						    break;
 					case 23://AUIPC
@@ -95,8 +92,6 @@ public:
 						   break;
 				}
 			}else if(type==J){//JAL
-//			puts("do JAL here!");
-//			printf("%d\n",_code);
 				rd=npc+4;
 				npc+=imm;
 			}else if(type==I){
@@ -142,7 +137,6 @@ public:
 			}
 		}
 		void Store(uint&val,uint st,uint*mem){
-//			printf("-----------------------STORE st %d          %u\n",st,val);
 			uint fea1=sep(_code,12,14);
 			switch(fea1){
 				case 0://SB
@@ -163,7 +157,6 @@ public:
 			}
 		}
 		void Load(uint&val,uint st,uint*mem){
-//			printf("----------------------- LOAD st %d\n",st);
 			uint fea1=sep(_code,12,14);
 			switch(fea1){
 				case 0://LB
@@ -180,7 +173,6 @@ public:
 					   val=0;
 					   for(int i=st+3;i>=st;i--) val=(val<<8)|mem[i];
 					   val=ext(val,31);
-//					   printf("###################### LW here, val is %u\n",val);
 					   break;
 				case 4://LBU
 					   val=0;
@@ -243,7 +235,6 @@ public:
 			
 		}
 		T&get_front(){
-//			printf("get front here is %d\n",nxt(head));
 			return que[nxt(head)];
 		}
 		T&operator[](int pos){return que[pos];}
@@ -254,9 +245,10 @@ public:
 		}
     };
     struct ROB_node{
-    	uint val,xpc,npc,_code,ppc;
+    	uint val,xpc,npc,_code,ppc;//x for nxet(predict), n for now, p for pre 
     	int rd,id;
-    	bool is_done,is_jump,is_store;
+    	bool is_done,is_jump,is_store;//jump for JALR and Branches
+    	//IQ可以直接访问rename的地址结果，/CDB 
     	ROB_node():is_done(0),is_jump(0){}
     };
     class ROB{
@@ -285,16 +277,13 @@ public:
 			preque.clear();
 			nxtque.clear();
 		}
-    };
+    }rob;
     struct RS_node{
     	bool busy;
     	int id,Q1,Q2,_code;
     	uint V1,V2;
     	command*p;
     	RS_node():busy(0),p(nullptr){}
-    	~RS_node(){
-//    		delete p;
-    	}
     	void set(const bool&_busy,const int&_id,const int&_Q1,const int&_Q2,const uint&_V1,const uint&_V2,command*_p){
     		busy=_busy,id=_id,Q1=_Q1,Q2=_Q2,V1=_V1,V2=_V2,p=_p;
     	}
@@ -311,13 +300,10 @@ public:
     };
     struct RS{
     	RS_node preque[32],nxtque[32],ex_node;
-    	bool exfl;
+    	bool exfl;//有无可执行的指令 
     	RS():exfl(0){}
     	bool is_ready(){
     		for(int i=0;i<32;i++){
-//    			if(preque[i].busy){
-//    				printf("RS %d : order is %u    %d   %d\n",i,preque[i]._code,preque[i].Q1,preque[i].Q2);
-//    			}
     			if(preque[i].busy&&preque[i].is_ready()){
     				ex_node=preque[i];
     				nxtque[i].clear();
@@ -354,16 +340,14 @@ public:
 				nxtque[i].clear();
     		}
 		}
-    };
+    }rs;
     struct SLB_node{
-    	int count;
+    	int count;//executing for 1,2. done for 3 
     	RS_node rsnode;
-    	bool is_commmited;
+    	bool is_commmited;//Store指令需要在reg[rs1]commit之后才能执行 
     	SLB_node():count(0),is_commmited(0){}
     	bool is_ready(){
-//    		puts("here");printf("%d",rsnode.p==NULL);
     		if(rsnode.p->type==S) return rsnode.is_ready()&&is_commmited;
-//    		puts("???");
     		return rsnode.is_ready();
 		}
 	};
@@ -409,19 +393,19 @@ public:
     		nxtque.clear();
     		nxtque=preque;
 		}
-	};
+	}slb;
 	struct Issue_sig{
-		bool has_res,toRS;
+		bool has_res,toRS;//fetch an order and acceptable for RS/SLB
 		uint _code;
 		RS_node rsnode;
 		Issue_sig():has_res(0){}
-	};
+	}issue_sig;
 	struct Execute_sig{
 		bool has_res;
 		uint val,npc;
 		int posROB;
 		Execute_sig():has_res(0),val(0),npc(0),posROB(0){}
-	};
+	}execute_sig;
 	struct Reg_sig{
 		int issue_rd,issue_pos,commit_rd,id;
 		uint val;
@@ -430,41 +414,32 @@ public:
             issue_rd = issue_pos = commit_rd = -1;
             val=0;
 		}
-	};
+	}reg_sig;
 	struct iss{
 		uint _code,_npc,_pc;
 	};
 private:
-	uint pc,nxt_pc,code_from_rob_to_commit;
+	uint pc,nxt_pc,commited_code;
 	uint*mem;
-	ROB_node carrier;
+	ROB_node carrier;//传递指令的载体 
 	_register prereg,nxtreg;
 	Queue<iss>preque,nxtque;
-	int commit_to_SLB_id;
-    bool commit_flag, reserve_flag, reserve_isJump, reserve_isStore;
-    bool fetch_flag, ROB_is_stall, commit_to_SLB;
-    bool issue_to_ex_flag, new_issue_to_ex_flag;
-    RS_node issue_to_ex_node, new_issue_to_ex_node;
-    Issue_sig issue_sig;
-    Execute_sig execute_sig;
-    ROB rob;
-    RS rs;
-    SLB slb;
-    Reg_sig reg_sig;
+	int commit_id;
+    bool has_commited,reserve_flag,fetch_flag,commited_store,goex_fl,ngoex;
+    RS_node goex_node,ngoex_node;
     
-    char predict[4096], history[4096];
+    char history[4096];
     char predictTable[4096][4];
-    unsigned int HASH(unsigned int pc) { return ((pc >> 12) ^ (pc >> 2)) & 0xfff; }
+    unsigned int HASH(unsigned int pc){return (pc>>2)&0xfff;}
 
 public:
 	Simulator():pc(0),nxt_pc(0),mem(new uint[500000]){
-        new_issue_to_ex_flag = issue_to_ex_flag = commit_flag = commit_to_SLB = reserve_flag = reserve_isStore = reserve_isJump = fetch_flag = false;
+        ngoex=goex_fl=has_commited=commited_store=reserve_flag=fetch_flag=false;
         
-        memset(mem, 0, sizeof(mem));
-        for (int i = 0; i < 4096; ++i) predict[i] = 1;
-        for (int i = 0; i < 4096; ++i)
-            for (int j = 0; j < 3; ++j) predictTable[i][j] = 2;
-        memset(history, 0, sizeof(history));
+        memset(mem,0,sizeof(mem));
+        for(int i=0;i<4096;++i)
+            for(int j=0;j<3;++j) predictTable[i][j]=2;
+        memset(history,0,sizeof(history));
 	}
 	void scan(){
 		char S[20];pc=0;
@@ -484,36 +459,23 @@ public:
     	int tt=0;
         while (true) {
         	tt++;
-        	if(tt>10000000){
-        		printf("137");
+        	if(tt>lim){
+				error();
         		break;
         	}
-//        	if(tt>100000){}
-//        	for(int i=0;i<32;i++) printf("%d ",prereg[i]);
-//        	printf("   pc == %d    nxtpc == %d\n",pc,nxt_pc); 
-//			puts(""); 
             run_rob();
             if (carrier._code == 0x0ff00513) {
                 std::cout << std::dec << ((unsigned int) prereg[10] & 255u) << std::endl;
-//                printf("%d\n",tt);
                 break;
             }
-//            puts("SLB");
             run_slbuffer();
-//            puts("RS");
             run_reservation();
-//            puts("reg");
             run_regfile();
-//            puts("IQ");
             run_inst_fetch_queue();
-//            puts("update");
             update();
 
-//            puts("IS");
             run_issue();
-//            puts("EX");
             run_ex();
-//            puts("commit");
             run_commit();
         }
     }
@@ -610,9 +572,7 @@ public:
     					Q2=0;
     				}
     			}else Q2=0;
-//    			printf("---------------%u\n",npc);
     			issue_sig.rsnode.set(1,pos,Q1,Q2,V1,V2,p);
-//    			printf("---------------%u\n",issue_sig.rsnode.p->npc);
     			if(fea0==35||fea0==3) issue_sig.toRS=0;
     			else issue_sig.toRS=1;
     			issue_sig.has_res=reserve_flag=1;
@@ -624,18 +584,17 @@ public:
     			carrier.rd=(rd?rd:-1);
     			carrier.is_jump=(fea0==99||fea0==103);
     			carrier.xpc=preque.get_front()._npc;
-    			new_issue_to_ex_flag=0; 
+    			ngoex=0; 
     			if(issue_sig.toRS&&issue_sig.rsnode.is_ready()){
     				issue_sig.has_res=0;
-                    new_issue_to_ex_flag=1;
-                    new_issue_to_ex_node=issue_sig.rsnode;
+                    ngoex=1;
+                    ngoex_node=issue_sig.rsnode;
     			}
     			if(issue_sig.toRS&&rs.is_full()||!issue_sig.toRS&&slb.is_full()){
     				issue_sig.has_res=0;
                     reserve_flag=0;
                     fetch_flag=0;
     			}
-//    			printf("<new_issue_to_ex_node = %u>\n",new_issue_to_ex_node.p->npc);
     		}
     	}
     }
@@ -645,9 +604,9 @@ public:
     	}
     	rs.exfl=rs.is_ready();
 //    	if(!rs.exfl) puts("--------------------------------RS GG!");
-    	if(rs.exfl&&new_issue_to_ex_flag){
-    		rs.insert(new_issue_to_ex_node);
-    		new_issue_to_ex_flag=0;
+    	if(rs.exfl&&ngoex){
+    		rs.insert(ngoex_node);
+    		ngoex=0;
     	}
     	if(execute_sig.has_res){
 //    		printf("---------------------%d is commiting in RS!\n",execute_sig.posROB);
@@ -664,13 +623,13 @@ public:
     }
     void run_ex(){
     	execute_sig.has_res=1;
-    	if(issue_to_ex_flag){
+    	if(goex_fl){
 //    		puts("issue to ex here");
-    		RS_node&tmp=issue_to_ex_node;
+    		RS_node&tmp=goex_node;
     		execute_sig.posROB=tmp.id;
     		tmp.p->process(execute_sig.val,tmp.V1,tmp.V2);
     		execute_sig.npc=tmp.p->get_npc();
-    		issue_to_ex_flag=0;
+    		goex_fl=0;
     	}else if(rs.exfl){
     		RS_node&tmp=rs.ex_node;
     		execute_sig.posROB=tmp.id;
@@ -717,13 +676,11 @@ public:
     				slb.nROB=front.rsnode.id;
     				slb.pop();
     			}else{
-//            puts("4");
 					slb.nxtque.get_front()=front;
 				}
     		}
     	}
-//            puts("11111");
-    	if(commit_to_SLB) slb.upload_commit(commit_to_SLB_id);
+    	if(commited_store) slb.upload_commit(commit_id);
     	if(execute_sig.has_res) slb.upload_rename(execute_sig.posROB,execute_sig.val);
     	if(slb.is_ok&&!slb.is_store) slb.upload_rename(slb.posROB,slb.val);
     }
@@ -733,9 +690,9 @@ public:
     		rob.insert(carrier);
     		reserve_flag=0;
     	}
-    	if(commit_flag){
+    	if(has_commited){
     		rob.pop();
-    		commit_flag=0;
+    		has_commited=0;
     	}
     	if(execute_sig.has_res){
     		ROB_node&tmp=rob(execute_sig.posROB);
@@ -758,18 +715,18 @@ public:
     	reg_sig.clear();
     }
     void run_commit(){
-    	commit_to_SLB=commit_flag=0;
+    	commited_store=has_commited=0;
     	if(!rob.is_empty()){
     		ROB_node tmp=rob.get_front();
     		if(tmp.is_done){
 //    		printf("order %u is done      %u\n",tmp._code,tmp.val);
-    			commit_to_SLB=tmp.is_store;
-    			commit_to_SLB_id=tmp.id;
+    			commited_store=tmp.is_store;
+    			commit_id=tmp.id;
     			reg_sig.commit_rd=tmp.rd;
     			reg_sig.val=tmp.val;
     			reg_sig.id=tmp.id;
-    			commit_flag=1;
-    			code_from_rob_to_commit=tmp._code;
+    			has_commited=1;
+    			commited_code=tmp._code;
     			if(sep(tmp._code,0,6)==99){//branch
     				if(tmp.npc!=tmp.ppc+4){
                         if (predictTable[HASH(tmp.ppc)][history[HASH(tmp.ppc)]]<3)
@@ -779,10 +736,10 @@ public:
     				history[HASH(tmp.ppc)]=(history[HASH(tmp.ppc)]<<1)|(tmp.npc!=tmp.ppc+4);
                     history[HASH(tmp.ppc)]&=0b11;
     			}
-    			if(tmp.is_jump&&tmp.xpc!=tmp.npc){
+    			if(tmp.is_jump&&tmp.xpc!=tmp.npc){//分支预测失败 
     				issue_sig.has_res=0;
-    				new_issue_to_ex_flag=0;
-    				issue_to_ex_flag=0;
+    				ngoex=0;
+    				goex_fl=0;
     				reserve_flag=0;
     				carrier.is_store=carrier.is_jump=0;
     				fetch_flag=0;
@@ -798,7 +755,7 @@ public:
     				nxtreg.clear();
     				reg_sig.clear();
     				nxt_pc=tmp.npc;
-    				commit_flag=0;
+    				has_commited=0;
     			}
     		}
     	}
@@ -806,8 +763,8 @@ public:
     void update(){
     	prereg=nxtreg;
     	preque=nxtque;
-        issue_to_ex_flag=new_issue_to_ex_flag;
-        issue_to_ex_node=new_issue_to_ex_node;
+        goex_fl=ngoex;
+        goex_node=ngoex_node;
         rs.update();
         slb.update();
         rob.update();
